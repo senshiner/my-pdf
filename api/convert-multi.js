@@ -10,14 +10,17 @@ module.exports = async (req, res) => {
   try {
     let body = '';
 
-    // collect body manually (karena Vercel tidak pakai body-parser default)
-    req.on('data', chunk => body += chunk);
+    // Kumpulkan data body secara manual
+    req.on('data', chunk => {
+      body += chunk;
+    });
+
     req.on('end', async () => {
       let parsed;
       try {
-        parsed = JSON.parse(body);
-      } catch (parseErr) {
-        return res.status(400).json({ error: 'Invalid JSON input' });
+        parsed = typeof body === 'string' ? JSON.parse(body) : body;
+      } catch (e) {
+        return res.status(400).json({ error: 'Invalid JSON in request body' });
       }
 
       const { images } = parsed;
@@ -32,19 +35,16 @@ module.exports = async (req, res) => {
         try {
           const base64Data = base64String.replace(/^data:image\/(png|jpeg|jpg);base64,/, '');
           const imageBuffer = Buffer.from(base64Data, 'base64');
-          
+
           const processedImageBuffer = await sharp(imageBuffer)
             .resize({ width: 595, fit: 'contain' }) // A4 width
             .toBuffer();
 
           const imageFormat = await sharp(imageBuffer).metadata().then(m => m.format);
 
-          let image;
-          if (imageFormat === 'jpeg' || imageFormat === 'jpg') {
-            image = await pdfDoc.embedJpg(processedImageBuffer);
-          } else {
-            image = await pdfDoc.embedPng(processedImageBuffer);
-          }
+          const image = (imageFormat === 'jpeg' || imageFormat === 'jpg')
+            ? await pdfDoc.embedJpg(processedImageBuffer)
+            : await pdfDoc.embedPng(processedImageBuffer);
 
           const page = pdfDoc.addPage([595, 842]); // A4 size
           const { width, height } = image.scale(1);
