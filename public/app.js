@@ -8,7 +8,6 @@ document.addEventListener('DOMContentLoaded', () => {
   const clearBtn = document.getElementById('clear-btn');
   const imageCountElement = document.getElementById('image-count');
   const loadingElement = document.getElementById('loading');
-  const pdfFilenameInput = document.getElementById('pdf-filename'); // Added
 
   // Track selected files
   let selectedFiles = [];
@@ -164,8 +163,6 @@ document.addEventListener('DOMContentLoaded', () => {
       formData.append('images', file);
     });
 
-    const pdfFilename = pdfFilenameInput.value || 'converted'; // Get filename from input
-
     try {
       // Send files to server
       const response = await fetch('/convert', {
@@ -186,7 +183,7 @@ document.addEventListener('DOMContentLoaded', () => {
       const a = document.createElement('a');
       a.style.display = 'none';
       a.href = url;
-      a.download = `${pdfFilename}.pdf`; // Use custom filename
+      a.download = 'converted.pdf';
       document.body.appendChild(a);
       a.click();
       window.URL.revokeObjectURL(url);

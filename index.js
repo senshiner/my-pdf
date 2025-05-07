@@ -47,9 +47,6 @@ app.post('/api/convert', upload.single('image'), async (req, res) => {
     if (!req.file) {
       return res.status(400).json({ error: 'No image uploaded' });
     }
-
-    // Optional custom filename from request
-    const customFilename = req.body.filename || 'converted';
     
     // Create a new PDF document
     const pdfDoc = await PDFDocument.create();
@@ -91,9 +88,9 @@ app.post('/api/convert', upload.single('image'), async (req, res) => {
     // Clean up the temporary file
     fs.unlinkSync(imagePath);
     
-    // Set headers for PDF download with custom filename
+    // Set headers for PDF download
     res.setHeader('Content-Type', 'application/pdf');
-    res.setHeader('Content-Disposition', `attachment; filename="${customFilename}.pdf"`);
+    res.setHeader('Content-Disposition', `attachment; filename="converted.pdf"`);
     
     // Send the PDF directly as the response
     res.end(Buffer.from(pdfBytes));
