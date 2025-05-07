@@ -122,7 +122,7 @@ document.addEventListener('DOMContentLoaded', () => {
         });
       }));
 
-      const response = await fetch('/convert', {
+      const response = await fetch('/api/convert-multi', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ images })
