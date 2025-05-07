@@ -25,6 +25,13 @@ const storage = multer.diskStorage({
     }
     cb(null, uploadDir);
   },
+
+// API health check endpoint
+app.get('/api/health', (req, res) => {
+  res.json({ status: 'ok', message: 'API is running' });
+});
+
+
   filename: (req, file, cb) => {
     cb(null, Date.now() + '-' + file.originalname);
   }
@@ -109,46 +116,46 @@ app.post('/api/convert', async (req, res) => {
 
 // Helper function to convert image to PDF and send response
 async function convertAndSendPDF(imageBuffer, mimeType, res) {
-  // Create a new PDF document
-  const pdfDoc = await PDFDocument.create();
-  
-  // Determine image type and embed it
-  let image;
-  if (mimeType === 'image/jpeg' || mimeType === 'image/jpg') {
-    image = await pdfDoc.embedJpg(imageBuffer);
-  } else {
-    image = await pdfDoc.embedPng(imageBuffer);
-  }
+  try {
+    // Create a new PDF document
+    const pdfDoc = await PDFDocument.create();
     
+    // Determine image type and embed it
+    let image;
+    if (mimeType === 'image/jpeg' || mimeType === 'image/jpg') {
+      image = await pdfDoc.embedJpg(imageBuffer);
+    } else {
+      image = await pdfDoc.embedPng(imageBuffer);
+    }
+      
     // Add a new page to the PDF
-  const page = pdfDoc.addPage([595, 842]); // A4 size in points
-  
-  // Calculate dimensions to fit image proportionally
-  const { width, height } = image.scale(1);
-  
-  // Draw the image centered on the page
-  page.drawImage(image, {
-    x: (page.getWidth() - width) / 2,
-    y: (page.getHeight() - height) / 2,
-    width,
-    height,
-  });
-  
-  // Save the PDF
-  const pdfBytes = await pdfDoc.save();
-  
-  // Set headers for PDF download
-  res.setHeader('Content-Type', 'application/pdf');
-  res.setHeader('Content-Disposition', `attachment; filename="converted.pdf"`);
-  
-  // Send the PDF directly as the response
-  res.end(Buffer.from(pdfBytes));
+    const page = pdfDoc.addPage([595, 842]); // A4 size in points
     
+    // Calculate dimensions to fit image proportionally
+    const { width, height } = image.scale(1);
+    
+    // Draw the image centered on the page
+    page.drawImage(image, {
+      x: (page.getWidth() - width) / 2,
+      y: (page.getHeight() - height) / 2,
+      width,
+      height,
+    });
+    
+    // Save the PDF
+    const pdfBytes = await pdfDoc.save();
+    
+    // Set headers for PDF download
+    res.setHeader('Content-Type', 'application/pdf');
+    res.setHeader('Content-Disposition', `attachment; filename="converted.pdf"`);
+    
+    // Send the PDF directly as the response
+    res.end(Buffer.from(pdfBytes));
   } catch (error) {
     console.error('Error during conversion:', error);
     res.status(500).json({ error: 'Failed to convert image to PDF' });
   }
-});
+}
 
 // Convert multiple images to PDF endpoint
 app.post('/convert', upload.array('images', 10), async (req, res) => {
