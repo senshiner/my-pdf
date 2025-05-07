@@ -1,3 +1,4 @@
+
 const { PDFDocument } = require('pdf-lib');
 const sharp = require('sharp');
 
@@ -8,16 +9,20 @@ module.exports = async (req, res) => {
   }
 
   try {
-    // Handle request body for Vercel serverless functions
-    let body = '';
+    // Handle request body
+    let body;
     
-    // For streaming request bodies
+    // If body is not parsed yet and is streaming
     if (!req.body && req.readable) {
+      let data = '';
       await new Promise((resolve) => {
         req.on('data', chunk => {
-          body += chunk;
+          data += chunk;
         });
-        req.on('end', resolve);
+        req.on('end', () => {
+          resolve();
+        });
+        body = data;
       });
     } else {
       // For pre-parsed bodies
@@ -29,6 +34,7 @@ module.exports = async (req, res) => {
     try {
       parsedBody = typeof body === 'string' ? JSON.parse(body) : body;
     } catch (e) {
+      console.error('JSON parsing error:', e);
       return res.status(400).json({ error: 'Invalid JSON in request body' });
     }
     
