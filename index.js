@@ -6,23 +6,24 @@ app.post('/api/convert', express.raw({ type: 'application/octet-stream', limit: 
       return res.status(400).json({ error: 'Invalid image buffer' });
     }
 
-    // Create a new PDF document
-    const pdfDoc = await PDFDocument.create();
+    // Cek metadata gambar
+    const metadata = await sharp(buffer).metadata();
+    if (!['jpeg', 'png'].includes(metadata.format)) {
+      return res.status(400).json({ error: 'Only JPEG and PNG are supported' });
+    }
 
-    // Process image with sharp
-    const imageBuffer = await sharp(buffer)
-      .resize({ width: 595, fit: 'contain' }) // A4 width
+    // Resize gambar ke lebar A4 (595pt)
+    const resizedBuffer = await sharp(buffer)
+      .resize({ width: 595, fit: 'contain' })
       .toBuffer();
 
-    // Detect image format
-    const metadata = await sharp(buffer).metadata();
+    const pdfDoc = await PDFDocument.create();
     let image;
-    if (metadata.format === 'jpeg' || metadata.format === 'jpg') {
-      image = await pdfDoc.embedJpg(imageBuffer);
-    } else if (metadata.format === 'png') {
-      image = await pdfDoc.embedPng(imageBuffer);
+
+    if (metadata.format === 'jpeg') {
+      image = await pdfDoc.embedJpg(resizedBuffer);
     } else {
-      return res.status(400).json({ error: 'Unsupported image format' });
+      image = await pdfDoc.embedPng(resizedBuffer);
     }
 
     const page = pdfDoc.addPage([595, 842]);
@@ -32,15 +33,14 @@ app.post('/api/convert', express.raw({ type: 'application/octet-stream', limit: 
       x: (595 - width) / 2,
       y: (842 - height) / 2,
       width,
-      height
+      height,
     });
 
     const pdfBytes = await pdfDoc.save();
 
     res.setHeader('Content-Type', 'application/pdf');
     res.setHeader('Content-Disposition', 'attachment; filename="converted.pdf"');
-    res.send(Buffer.from(pdfBytes));
-
+    res.end(Buffer.from(pdfBytes));
   } catch (err) {
     console.error('Conversion error:', err);
     res.status(500).json({ error: 'Failed to convert image' });
