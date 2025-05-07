@@ -41,7 +41,70 @@ const upload = multer({
   }
 });
 
-// Convert images to PDF endpoint
+// API endpoint for converting a single image to PDF
+app.post('/api/convert', upload.single('image'), async (req, res) => {
+  try {
+    if (!req.file) {
+      return res.status(400).json({ error: 'No image uploaded' });
+    }
+
+    // Optional custom filename from request
+    const customFilename = req.body.filename || 'converted';
+    
+    // Create a new PDF document
+    const pdfDoc = await PDFDocument.create();
+    
+    // Process the uploaded image
+    const imagePath = req.file.path;
+    
+    // Process image with sharp
+    const imageBuffer = await sharp(imagePath)
+      .resize({ width: 595, fit: 'contain' }) // A4 width in points
+      .toBuffer();
+    
+    // Determine image type and embed it
+    let image;
+    if (req.file.mimetype === 'image/jpeg') {
+      image = await pdfDoc.embedJpg(imageBuffer);
+    } else {
+      image = await pdfDoc.embedPng(imageBuffer);
+    }
+    
+    // Add a new page to the PDF
+    const page = pdfDoc.addPage([595, 842]); // A4 size in points
+    
+    // Calculate dimensions to fit image proportionally
+    const dimensions = image.scale(1);
+    const { width, height } = dimensions;
+    
+    // Draw the image centered on the page
+    page.drawImage(image, {
+      x: (page.getWidth() - width) / 2,
+      y: (page.getHeight() - height) / 2,
+      width,
+      height,
+    });
+    
+    // Save the PDF
+    const pdfBytes = await pdfDoc.save();
+    
+    // Clean up the temporary file
+    fs.unlinkSync(imagePath);
+    
+    // Set headers for PDF download with custom filename
+    res.setHeader('Content-Type', 'application/pdf');
+    res.setHeader('Content-Disposition', `attachment; filename="${customFilename}.pdf"`);
+    
+    // Send the PDF directly as the response
+    res.end(Buffer.from(pdfBytes));
+    
+  } catch (error) {
+    console.error('Error during conversion:', error);
+    res.status(500).json({ error: 'Failed to convert image to PDF' });
+  }
+});
+
+// Convert multiple images to PDF endpoint
 app.post('/convert', upload.array('images', 10), async (req, res) => {
   try {
     if (!req.files || req.files.length === 0) {
