@@ -10,6 +10,7 @@ document.addEventListener('DOMContentLoaded', () => {
 
   let selectedFiles = [];
 
+  // Prevent default behavior for drag events
   ['dragenter', 'dragover', 'dragleave', 'drop'].forEach(event => {
     dropArea.addEventListener(event, e => {
       e.preventDefault();
@@ -17,14 +18,17 @@ document.addEventListener('DOMContentLoaded', () => {
     }, false);
   });
 
+  // Highlight on drag
   ['dragenter', 'dragover'].forEach(event => {
     dropArea.addEventListener(event, () => dropArea.classList.add('highlight'), false);
   });
 
+  // Remove highlight on drag leave/drop
   ['dragleave', 'drop'].forEach(event => {
     dropArea.addEventListener(event, () => dropArea.classList.remove('highlight'), false);
   });
 
+  // Handle dropped or selected files
   dropArea.addEventListener('drop', e => handleFiles(e.dataTransfer.files), false);
   fileInput.addEventListener('change', () => handleFiles(fileInput.files));
 
@@ -36,14 +40,16 @@ document.addEventListener('DOMContentLoaded', () => {
     updateImageCount();
     previewContainer.classList.remove('hidden');
     convertBtn.disabled = false;
+
     valid.forEach(displayPreview);
   }
 
   function displayPreview(file) {
     const reader = new FileReader();
+
     reader.onload = e => {
-      const div = document.createElement('div');
-      div.className = 'brutal-border p-3 bg-white relative';
+      const wrapper = document.createElement('div');
+      wrapper.className = 'brutal-border p-3 bg-white relative';
 
       const img = document.createElement('img');
       img.src = e.target.result;
@@ -61,21 +67,25 @@ document.addEventListener('DOMContentLoaded', () => {
       const removeBtn = document.createElement('button');
       removeBtn.className = 'absolute top-1 right-1 brutal-border p-1 bg-red-500 text-white text-xs';
       removeBtn.textContent = 'X';
-      removeBtn.onclick = () => {
-        const i = selectedFiles.findIndex(f => f.name === file.name && f.size === file.size);
-        if (i > -1) selectedFiles.splice(i, 1);
-        div.remove();
-        updateImageCount();
-        if (selectedFiles.length === 0) {
-          previewContainer.classList.add('hidden');
-          convertBtn.disabled = true;
-        }
-      };
+      removeBtn.onclick = () => removeFile(file, wrapper);
 
-      div.append(img, name, size, removeBtn);
-      imagesPreview.appendChild(div);
+      wrapper.append(img, name, size, removeBtn);
+      imagesPreview.appendChild(wrapper);
     };
+
     reader.readAsDataURL(file);
+  }
+
+  function removeFile(file, element) {
+    const index = selectedFiles.findIndex(f => f.name === file.name && f.size === file.size);
+    if (index > -1) selectedFiles.splice(index, 1);
+    element.remove();
+    updateImageCount();
+
+    if (selectedFiles.length === 0) {
+      previewContainer.classList.add('hidden');
+      convertBtn.disabled = true;
+    }
   }
 
   function formatFileSize(bytes) {
@@ -125,6 +135,7 @@ document.addEventListener('DOMContentLoaded', () => {
 
       const blob = await response.blob();
       const url = URL.createObjectURL(blob);
+
       const a = document.createElement('a');
       a.href = url;
       a.download = 'converted.pdf';
