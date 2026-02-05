@@ -1,0 +1,9 @@
+/* Minimal global file to avoid missing import in _app.js */
+html,
+body,
+#__next {
+  height: 100%;
+}
+body {
+  margin: 0;
+}
