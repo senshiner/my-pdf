@@ -3,6 +3,7 @@ import sharp from "sharp";
 import { IncomingForm } from "formidable";
 import fs from "fs";
 import path from "path";
+import os from "os";
 
 export const config = {
   api: {
@@ -12,14 +13,15 @@ export const config = {
 
 const parseForm = (req) => {
   return new Promise((resolve, reject) => {
+    const uploadDir = path.join(os.tmpdir(), "my-pdf-uploads");
     const form = new IncomingForm({
-      uploadDir: path.join(process.cwd(), "tmp"),
+      uploadDir,
       keepExtensions: true,
       multiples: true,
     });
 
-    if (!fs.existsSync(form.uploadDir)) {
-      fs.mkdirSync(form.uploadDir, { recursive: true });
+    if (!fs.existsSync(uploadDir)) {
+      fs.mkdirSync(uploadDir, { recursive: true });
     }
 
     form.parse(req, async (err, fields, files) => {
