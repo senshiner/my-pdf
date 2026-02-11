@@ -23,8 +23,8 @@ const parseForm = (req) => {
     }
 
     form.parse(req, async (err, fields, files) => {
-      if (err) reject(err);
-      resolve({ fields, files });
+      if (err) return reject(err);
+      return resolve({ fields, files });
     });
   });
 };
