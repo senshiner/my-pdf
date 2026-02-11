@@ -24,7 +24,7 @@ const parseForm = (req) => {
       fs.mkdirSync(uploadDir, { recursive: true });
     }
 
-    form.parse(req, async (err, fields, files) => {
+    form.parse(req, (err, fields, files) => {
       if (err) return reject(err);
       return resolve({ fields, files });
     });
@@ -49,45 +49,60 @@ export default async function handler(req, res) {
 
   try {
     const { fields, files } = await parseForm(req);
-    const imageFile = Array.isArray(files.image) ? files.image[0] : files.image;
+    const imagesFromMulti = files.images ? (Array.isArray(files.images) ? files.images : [files.images]) : [];
+    const imagesFromSingle = files.image ? (Array.isArray(files.image) ? files.image : [files.image]) : [];
 
-    if (!imageFile) {
-      return res.status(400).json({ error: "No image provided" });
+    const imageFiles = [...imagesFromMulti, ...imagesFromSingle];
+
+    if (!imageFiles || imageFiles.length === 0) {
+      return res.status(400).json({ error: "No images provided" });
     }
-
-    const fileBuffer = fs.readFileSync(imageFile.filepath);
-    const processedImageBuffer = await sharp(fileBuffer).resize({ width: 595, fit: "contain" }).toBuffer();
-
-    const imageMetadata = await sharp(fileBuffer).metadata();
-    const imageFormat = imageMetadata.format;
 
     const pdfDoc = await PDFDocument.create();
 
-    let image;
-    if (imageFormat === "jpeg" || imageFormat === "jpg") {
-      image = await pdfDoc.embedJpg(processedImageBuffer);
-    } else if (imageFormat === "png") {
-      image = await pdfDoc.embedPng(processedImageBuffer);
-    } else if (imageFormat === "webp") {
-      const pngBuffer = await sharp(processedImageBuffer).png().toBuffer();
-      image = await pdfDoc.embedPng(pngBuffer);
+    for (const file of imageFiles) {
+      try {
+        const fileBuffer = fs.readFileSync(file.filepath);
+        const processedImageBuffer = await sharp(fileBuffer).resize({ width: 595, fit: "contain" }).toBuffer();
+
+        const imageMetadata = await sharp(fileBuffer).metadata();
+        const imageFormat = imageMetadata.format;
+
+        let image;
+        if (imageFormat === "jpeg" || imageFormat === "jpg") {
+          image = await pdfDoc.embedJpg(processedImageBuffer);
+        } else if (imageFormat === "png") {
+          image = await pdfDoc.embedPng(processedImageBuffer);
+        } else if (imageFormat === "webp") {
+          const pngBuffer = await sharp(processedImageBuffer).png().toBuffer();
+          image = await pdfDoc.embedPng(pngBuffer);
+        } else {
+          // Skip unsupported formats
+          continue;
+        }
+
+        const page = pdfDoc.addPage([595, 842]);
+        const { width, height } = image.scale(1);
+
+        page.drawImage(image, {
+          x: (595 - width) / 2,
+          y: (842 - height) / 2,
+          width,
+          height,
+        });
+
+        // remove uploaded temp file
+        try {
+          fs.unlinkSync(file.filepath);
+        } catch (e) {
+          // ignore
+        }
+      } catch (imgErr) {
+        console.error("Error processing image:", imgErr);
+      }
     }
 
-    const page = pdfDoc.addPage([595, 842]);
-    const { width, height } = image.scale(1);
-
-    page.drawImage(image, {
-      x: (595 - width) / 2,
-      y: (842 - height) / 2,
-      width,
-      height,
-    });
-
     const pdfBytes = await pdfDoc.save();
-
-    // Cleanup
-    fs.unlinkSync(imageFile.filepath);
-
     const pdfName = getPdfFilename(fields);
 
     res.setHeader("Content-Type", "application/pdf");
@@ -95,6 +110,6 @@ export default async function handler(req, res) {
     return res.send(Buffer.from(pdfBytes));
   } catch (error) {
     console.error("Error during conversion:", error);
-    return res.status(500).json({ error: "Failed to convert image to PDF", details: error.message });
+    return res.status(500).json({ error: "Failed to convert images to PDF", details: error.message });
   }
 }
