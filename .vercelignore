@@ -1,0 +1,11 @@
+node_modules
+.next
+tmp
+out
+dist
+.DS_Store
+.git
+coverage
+/.cache
+public/uploads
+package-lock.json
