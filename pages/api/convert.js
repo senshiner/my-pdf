@@ -29,6 +29,16 @@ const parseForm = (req) => {
   });
 };
 
+const getPdfFilename = (fields) => {
+  let name = fields && (fields.filename || fields.name || fields.title || "");
+  if (Array.isArray(name)) name = name[0];
+  name = name ? String(name) : "";
+  name = path.basename(name);
+  name = name.replace(/[^a-zA-Z0-9_\-\. ]/g, "_").trim();
+  if (!name) return "preview.pdf";
+  return name.toLowerCase().endsWith(".pdf") ? name : `${name}.pdf`;
+};
+
 export default async function handler(req, res) {
   if (req.method !== "POST") {
     res.setHeader("Allow", "POST");
@@ -76,8 +86,10 @@ export default async function handler(req, res) {
     // Cleanup
     fs.unlinkSync(imageFile.filepath);
 
+    const pdfName = getPdfFilename(fields);
+
     res.setHeader("Content-Type", "application/pdf");
-    res.setHeader("Content-Disposition", 'inline; filename="preview.pdf"');
+    res.setHeader("Content-Disposition", `attachment; filename="${pdfName}"; filename*=UTF-8''${encodeURIComponent(pdfName)}`);
     return res.send(Buffer.from(pdfBytes));
   } catch (error) {
     console.error("Error during conversion:", error);
