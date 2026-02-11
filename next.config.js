@@ -4,8 +4,5 @@
  * micromatch doesn't attempt to build very large patterns on the Vercel build host.
  */
 /** @type {import('next').NextConfig} */
-module.exports = {
-  experimental: {
-    outputFileTracingIgnores: ["**/tmp/**", "tmp/**", "public/uploads/**", ".cache/**"],
-  },
-};
+// Keep next.config minimal to avoid invalid experimental config on Vercel.
+module.exports = {};
